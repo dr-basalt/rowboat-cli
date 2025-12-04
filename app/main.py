@@ -14,9 +14,8 @@ class RowboatCall(BaseModel):
     base_url: Optional[str] = ""
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
-    rowboat_args: List[str] = []  # ex: ["init"] ou ["run", "--workflow", "..."]
-    # NOUVEAU :
-    agent: str = ""
+    rowboat_args: List[str] = []
+    agent: str = ""            # ex: "web_scraper_agent" ou "copilot"
     run_id: Optional[str] = None
 
 
@@ -38,13 +37,32 @@ def call_rowboat(payload: RowboatCall):
     if payload.default_model:
         cmd += ["--default-model", payload.default_model]
 
-    # ⬅️ NOUVEAU : reprendre une conversation si run_id fourni
     if payload.run_id:
         cmd += ["--run_id", payload.run_id]
-        
-    if payload.rowboat_args:
+
+    # 🔥 Construire les arguments CLI pour rowboatx
+    cli_args = list(payload.rowboat_args or [])
+
+    # 1) Injecter --agent si présent dans le payload et pas déjà dans les args
+    if payload.agent:
+        has_agent = any(
+            a == "--agent" or a.startswith("--agent=")
+            for a in cli_args
+        )
+        if not has_agent:
+            # syntaxe style --agent=name (compatible avec doc README)
+            cli_args.insert(0, f"--agent={payload.agent}")
+
+    # 2) Forcer --no-interactive=true si pas déjà demandé
+    has_no_interactive = any(
+        a.startswith("--no-interactive") for a in cli_args
+    )
+    if not has_no_interactive:
+        cli_args.append("--no-interactive=true")
+
+    if cli_args:
         cmd.append("--")
-        cmd.extend(payload.rowboat_args)
+        cmd.extend(cli_args)
 
     proc = subprocess.run(
         cmd,
