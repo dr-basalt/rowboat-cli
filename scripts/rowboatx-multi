@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ $# -lt 1 ]; then
+  echo "Usage: rowboatx-multi <USER_ID> [options-config...] [--] [rowboatx args...]" >&2
+  exit 1
+fi
+
+USER_ID="$1"
+shift || true
+
+PROVIDER_ID=""
+FLAVOR=""
+API_KEY=""
+MODEL=""
+BASE_URL=""
+DEFAULT_PROVIDER=""
+DEFAULT_MODEL=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --provider-id)       PROVIDER_ID="$2"; shift 2 ;;
+    --flavor)            FLAVOR="$2"; shift 2 ;;
+    --api-key)           API_KEY="$2"; shift 2 ;;
+    --model)             MODEL="$2"; shift 2 ;;
+    --base-url)          BASE_URL="$2"; shift 2 ;;
+    --default-provider)  DEFAULT_PROVIDER="$2"; shift 2 ;;
+    --default-model)     DEFAULT_MODEL="$2"; shift 2 ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+PROVIDER_ID="${PROVIDER_ID:-${ROWBOAT_PROVIDER_ID:-openai}}"
+FLAVOR="${FLAVOR:-${ROWBOAT_FLAVOR:-$PROVIDER_ID}}"
+MODEL="${MODEL:-${ROWBOAT_MODEL:-gpt-5.1}}"
+
+API_KEY="${API_KEY:-${ROWBOAT_API_KEY:-${OPENAI_API_KEY:-}}}"
+BASE_URL="${BASE_URL:-${ROWBOAT_BASE_URL:-}}"
+DEFAULT_PROVIDER="${DEFAULT_PROVIDER:-$PROVIDER_ID}"
+DEFAULT_MODEL="${DEFAULT_MODEL:-$MODEL}"
+
+if [[ -z "$API_KEY" ]]; then
+  echo "⚠ Aucune API key fournie (ni --api-key ni ROWBOAT_API_KEY/OPENAI_API_KEY)." >&2
+fi
+
+BASE_DIR="/data/rowboat/users"
+HOME_DIR="${BASE_DIR}/${USER_ID}"
+
+mkdir -p "${HOME_DIR}"
+export HOME="${HOME_DIR}"
+cd "${HOME_DIR}"
+
+CONFIG_DIR="${HOME_DIR}/.rowboat/config"
+mkdir -p "${CONFIG_DIR}"
+CONFIG_FILE="${CONFIG_DIR}/models.json"
+
+cat > "${CONFIG_FILE}" <<EOF
+{
+  "providers": {
+    "${PROVIDER_ID}": {
+      "flavor": "${FLAVOR}",
+      "apiKey": "${API_KEY}",
+      "baseURL": "${BASE_URL}",
+      "headers": {}
+    }
+  },
+  "defaults": {
+    "provider": "${DEFAULT_PROVIDER}",
+    "model": "${DEFAULT_MODEL}"
+  }
+}
+EOF
+
+exec npx --yes @rowboatlabs/rowboatx@latest "$@"
