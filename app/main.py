@@ -15,6 +15,9 @@ class RowboatCall(BaseModel):
     default_provider: Optional[str] = None
     default_model: Optional[str] = None
     rowboat_args: List[str] = []  # ex: ["init"] ou ["run", "--workflow", "..."]
+    # NOUVEAU :
+    agent: str = ""
+    run_id: Optional[str] = None
 
 
 @app.post("/call")
