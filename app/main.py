@@ -38,6 +38,10 @@ def call_rowboat(payload: RowboatCall):
     if payload.default_model:
         cmd += ["--default-model", payload.default_model]
 
+    # ⬅️ NOUVEAU : reprendre une conversation si run_id fourni
+    if payload.run_id:
+        cmd += ["--run_id", payload.run_id]
+        
     if payload.rowboat_args:
         cmd.append("--")
         cmd.extend(payload.rowboat_args)
